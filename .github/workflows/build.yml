@@ -1,0 +1,73 @@
+name: Build DeckCast
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Run frontend tests
+        run: pnpm test
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python test dependencies
+        run: pip install pytest pytest-asyncio
+
+      - name: Run Python tests
+        run: python -m pytest tests/ -v
+
+      - name: Prepare release package
+        run: |
+          mkdir -p out/DeckCast
+          cp -r dist out/DeckCast/
+          cp -r backend out/DeckCast/
+          cp -r defaults out/DeckCast/
+          cp -r assets out/DeckCast/ 2>/dev/null || true
+          cp main.py out/DeckCast/
+          cp plugin.json out/DeckCast/
+          cp package.json out/DeckCast/
+          cp LICENSE out/DeckCast/
+          cp README.md out/DeckCast/
+          cd out && zip -r ../DeckCast.zip DeckCast/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeckCast
+          path: DeckCast.zip
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: DeckCast.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
