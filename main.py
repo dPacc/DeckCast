@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(__file__))
 
 import decky_plugin
-from backend.recording_scanner import scan_recordings, get_recording_metadata, generate_thumbnail
+from backend.recording_scanner import scan_recordings, get_recording_metadata, generate_thumbnail, mux_recording
 from backend.transfer_server import TransferServer
 from backend.youtube_auth import (
     start_auth_flow,
@@ -78,6 +78,12 @@ class Plugin:
             with open(result, "rb") as f:
                 return base64.b64encode(f.read()).decode()
         return ""
+
+    async def mux_recording(self, clip_dir: str) -> dict:
+        output = mux_recording(clip_dir)
+        if output:
+            return {"success": True, "path": output}
+        return {"success": False, "error": "Failed to mux recording"}
 
     # ── Transfer Server ─────────────────────────────────────────
 
