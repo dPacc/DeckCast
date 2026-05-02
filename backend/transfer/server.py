@@ -80,9 +80,7 @@ class TransferServer:
         return {"url": url, "ip": ip, "port": port, "qr_base64": qr_base64}
 
     async def stop(self) -> bool:
-        """Stop the transfer server. Returns True if it was running."""
-        if self._cast_manager:
-            self._cast_manager.stop()
+        """Stop the transfer server. Cast continues running independently."""
         if self._server:
             self._server.close()
             await self._server.wait_closed()
