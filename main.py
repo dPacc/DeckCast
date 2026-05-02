@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import decky_plugin
 from backend.recording_scanner import scan_recordings, get_recording_metadata, generate_thumbnail, mux_recording
-from backend.transfer_server import TransferServer
+from backend.transfer import TransferServer
+from backend.transfer.file_manager import FileManager
 from backend.youtube_auth import (
     start_auth_flow,
     complete_auth_flow,
@@ -48,11 +49,13 @@ def _save_config(config: dict):
 class Plugin:
     transfer_server: TransferServer = None
     stream_manager: StreamManager = None
+    file_manager: FileManager = None
 
     async def _main(self):
         logger.info("DeckCast plugin loaded")
         self.transfer_server = TransferServer()
         self.stream_manager = StreamManager()
+        self.file_manager = FileManager(DATA_DIR)
 
     async def _unload(self):
         logger.info("DeckCast plugin unloading")
@@ -68,6 +71,11 @@ class Plugin:
             config = _load_config()
             extra_paths = config.get("recording_paths", []) + config.get("sd_card_paths", [])
             result = scan_recordings(extra_paths)
+            if self.file_manager:
+                from backend.transfer.handlers import _clip_id_from_recording
+                for rec in result:
+                    clip_id = _clip_id_from_recording(rec)
+                    rec["filename"] = self.file_manager.get_display_name(clip_id, rec["filename"])
             logger.info(f"Found {len(result)} recordings")
             return result
         except Exception as e:
@@ -93,20 +101,103 @@ class Plugin:
             return {"success": True, "path": output}
         return {"success": False, "error": "Failed to mux recording"}
 
-    # ── Transfer Server ─────────────────────────────────────────
+    # ── DeckCast Sharing ──────────────────────────────────────────
 
     async def start_transfer_server(self, port: int = 8420, password: str = None) -> dict:
+        """Start DeckCast sharing server."""
         recordings = await self.get_recordings()
         return await self.transfer_server.start(recordings, port, password)
 
     async def stop_transfer_server(self) -> bool:
+        """Stop DeckCast sharing server."""
         return await self.transfer_server.stop()
 
     async def get_transfer_status(self) -> dict:
+        """Get DeckCast sharing status."""
         return {
             "running": self.transfer_server.is_running if self.transfer_server else False,
             "ip": self.transfer_server.get_local_ip() if self.transfer_server else "",
         }
+
+    # ── Recording Management ──────────────────────────────────────
+
+    async def save_client_secrets(self, json_content: str) -> dict:
+        """Save YouTube OAuth client secrets from a JSON string."""
+        try:
+            data = json.loads(json_content)
+        except (json.JSONDecodeError, TypeError):
+            return {"success": False, "error": "Invalid JSON"}
+        if self.file_manager.save_client_secrets(data):
+            return {"success": True}
+        return {"success": False, "error": "Invalid client_secrets format"}
+
+    async def delete_recording(self, clip_id: str, confirm: bool) -> dict:
+        """Delete a recording from disk. Requires confirm=True."""
+        if not confirm:
+            return {"success": False, "error": "Confirmation required"}
+        recordings = await self.get_recordings()
+        from backend.transfer.handlers import _clip_id_from_recording
+        recording = None
+        for rec in recordings:
+            if _clip_id_from_recording(rec) == clip_id:
+                recording = rec
+                break
+        if not recording:
+            return {"success": False, "error": "Recording not found"}
+        ok = self.file_manager.delete_clip(recording["path"], clip_id)
+        return {"success": ok}
+
+    async def rename_recording(self, clip_id: str, new_name: str) -> dict:
+        """Rename a recording (sets display name in config)."""
+        if not new_name or not new_name.strip():
+            return {"success": False, "error": "Name is required"}
+        ok = self.file_manager.rename_clip(clip_id, new_name.strip())
+        if ok:
+            return {"success": True, "name": new_name.strip()}
+        return {"success": False, "error": "Rename failed"}
+
+    # ── Folder Management ──────────────────────────────────────
+
+    async def get_folders(self) -> list:
+        """Return all virtual folders."""
+        return self.file_manager.get_folders()
+
+    async def create_folder(self, name: str) -> dict:
+        """Create a new virtual folder."""
+        if not name or not name.strip():
+            return {"success": False, "error": "Folder name is required"}
+        folder = self.file_manager.create_folder(name.strip())
+        return {"success": True, "folder": folder}
+
+    async def rename_folder(self, folder_id: str, name: str) -> dict:
+        """Rename a virtual folder."""
+        if not name or not name.strip():
+            return {"success": False, "error": "Folder name is required"}
+        result = self.file_manager.rename_folder(folder_id, name.strip())
+        if result:
+            return {"success": True, "folder": result}
+        return {"success": False, "error": "Folder not found"}
+
+    async def delete_folder(self, folder_id: str) -> dict:
+        """Delete a virtual folder (clips remain on disk)."""
+        ok = self.file_manager.delete_folder(folder_id)
+        if ok:
+            return {"success": True}
+        return {"success": False, "error": "Folder not found"}
+
+    async def assign_clips_to_folder(self, folder_id: str, clip_ids: list) -> dict:
+        """Assign clips to a folder."""
+        ok = self.file_manager.assign_clips(folder_id, clip_ids)
+        if ok:
+            return {"success": True}
+        return {"success": False, "error": "Folder not found"}
+
+    async def remove_clips_from_folder(self, folder_id: str, clip_ids: list) -> dict:
+        """Remove clips from a folder."""
+        ok = self.file_manager.remove_clips(folder_id, clip_ids)
+        if ok:
+            return {"success": True}
+        return {"success": False, "error": "Folder not found"}
 
     # ── YouTube Auth ────────────────────────────────────────────
 
@@ -159,6 +250,26 @@ class Plugin:
         output_path: str = None,
     ) -> dict:
         return trim_clip(filepath, start_time, end_time, output_path)
+
+    # ── Live Casting ───────────────────────────────────────────
+
+    async def start_cast(self, resolution="1280x800", bitrate="4000k", framerate=30, record=False):
+        """Start live casting the Steam Deck screen via HLS."""
+        if not self.transfer_server or not self.transfer_server.is_running:
+            return {"success": False, "error": "Start sharing first"}
+        return self.transfer_server.cast_manager.start(resolution, bitrate, framerate, record)
+
+    async def stop_cast(self):
+        """Stop the active live cast."""
+        if self.transfer_server and self.transfer_server.cast_manager:
+            return self.transfer_server.cast_manager.stop()
+        return {"success": True, "status": "offline"}
+
+    async def get_cast_status(self):
+        """Return the current live cast status."""
+        if self.transfer_server and self.transfer_server.cast_manager:
+            return self.transfer_server.cast_manager.status
+        return {"status": "offline"}
 
     # ── Live Streaming ──────────────────────────────────────────
 
