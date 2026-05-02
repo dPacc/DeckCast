@@ -3,6 +3,7 @@ import base64
 import io
 import logging
 import socket
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -68,9 +69,19 @@ class TransferServer:
         self._port = port
         self._file_manager = fm_module.FileManager(DATA_DIR)
 
-        self._server = await asyncio.start_server(
-            self._handle_connection, "0.0.0.0", port
-        )
+        try:
+            self._server = await asyncio.start_server(
+                self._handle_connection, "0.0.0.0", port
+            )
+        except OSError:
+            try:
+                subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True, timeout=5)
+                await asyncio.sleep(1)
+            except Exception:
+                pass
+            self._server = await asyncio.start_server(
+                self._handle_connection, "0.0.0.0", port
+            )
 
         ip = self.get_local_ip()
         url = f"http://{ip}:{port}"

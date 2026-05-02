@@ -657,7 +657,7 @@ async def cast_start(
     record = body.get("record", False)
 
     cm = server_ctx["cast_manager"]
-    result = await asyncio.to_thread(cm.start, resolution, bitrate, framerate, record)
+    result = await cm.start(resolution, bitrate, framerate, record)
     status_code = 200 if result.get("success") else 400
     await send_json(writer, result, status=status_code)
 
@@ -669,7 +669,7 @@ async def cast_stop(
 ) -> None:
     """Stop the active cast."""
     cm = server_ctx["cast_manager"]
-    result = await asyncio.to_thread(cm.stop)
+    result = await cm.stop()
     await send_json(writer, result)
 
 
