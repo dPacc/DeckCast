@@ -2,11 +2,17 @@ import asyncio
 import json
 import os
 import socket
+import tempfile
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
 
-from backend.transfer_server import TransferServer, DOWNLOAD_PAGE_HTML, _url_decode
+# Patch DATA_DIR before importing TransferServer so it doesn't need /home/deck
+_test_data_dir = Path(tempfile.mkdtemp(prefix="deckcast_srv_"))
+patch("backend.transfer.server.DATA_DIR", _test_data_dir).start()
+
+from backend.transfer import TransferServer
 
 
 class TestTransferServerInit:
@@ -50,7 +56,7 @@ class TestTransferServerLifecycle:
     async def test_start_and_stop(self):
         server = TransferServer()
         recordings = [
-            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10},
+            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10, "is_dash": False},
         ]
         result = await server.start(recordings, port=18421)
         assert "url" in result
@@ -70,7 +76,7 @@ class TestTransferServerLifecycle:
     async def test_restart_replaces_server(self):
         server = TransferServer()
         recordings = [
-            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10},
+            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10, "is_dash": False},
         ]
         await server.start(recordings, port=18422)
         assert server.is_running is True
@@ -82,10 +88,10 @@ class TestTransferServerLifecycle:
 
 @pytest.mark.asyncio
 class TestTransferServerHTTP:
-    async def test_serves_download_page(self):
+    async def test_serves_index_page(self):
         server = TransferServer()
         recordings = [
-            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10},
+            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "Test", "size": 1024, "duration": 10, "is_dash": False},
         ]
         await server.start(recordings, port=18424)
 
@@ -93,7 +99,7 @@ class TestTransferServerHTTP:
             reader, writer = await asyncio.open_connection("127.0.0.1", 18424)
             writer.write(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
             await writer.drain()
-            response = await asyncio.wait_for(reader.read(4096), timeout=5)
+            response = await asyncio.wait_for(reader.read(8192), timeout=5)
             response_str = response.decode("utf-8", errors="replace")
             assert "200 OK" in response_str
             assert "DeckCast" in response_str
@@ -104,7 +110,7 @@ class TestTransferServerHTTP:
     async def test_serves_clips_api(self):
         server = TransferServer()
         recordings = [
-            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "TestGame", "size": 2048, "duration": 30},
+            {"path": "/tmp/test.mp4", "filename": "test.mp4", "game": "TestGame", "size": 2048, "duration": 30, "is_dash": False},
         ]
         await server.start(recordings, port=18425)
 
@@ -112,7 +118,7 @@ class TestTransferServerHTTP:
             reader, writer = await asyncio.open_connection("127.0.0.1", 18425)
             writer.write(b"GET /api/clips HTTP/1.1\r\nHost: localhost\r\n\r\n")
             await writer.drain()
-            response = await asyncio.wait_for(reader.read(4096), timeout=5)
+            response = await asyncio.wait_for(reader.read(8192), timeout=5)
             response_str = response.decode("utf-8", errors="replace")
             assert "200 OK" in response_str
             assert "TestGame" in response_str
@@ -133,17 +139,30 @@ class TestTransferServerHTTP:
         finally:
             await server.stop()
 
+    async def test_serves_folders_api(self):
+        server = TransferServer()
+        await server.start([], port=18427)
+        try:
+            reader, writer = await asyncio.open_connection("127.0.0.1", 18427)
+            writer.write(b"GET /api/folders HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            await writer.drain()
+            response = await asyncio.wait_for(reader.read(4096), timeout=5)
+            response_str = response.decode("utf-8", errors="replace")
+            assert "200 OK" in response_str
+            writer.close()
+        finally:
+            await server.stop()
 
-class TestUrlDecode:
-    def test_decodes_encoded_string(self):
-        assert _url_decode("hello%20world") == "hello world"
-        assert _url_decode("test%2Ffile.mp4") == "test/file.mp4"
-        assert _url_decode("normal") == "normal"
-
-
-class TestDownloadPageHTML:
-    def test_contains_required_elements(self):
-        assert "DeckCast" in DOWNLOAD_PAGE_HTML
-        assert "/api/clips" in DOWNLOAD_PAGE_HTML
-        assert "/download/" in DOWNLOAD_PAGE_HTML
-        assert "<!DOCTYPE html>" in DOWNLOAD_PAGE_HTML
+    async def test_client_secrets_status(self):
+        server = TransferServer()
+        await server.start([], port=18428)
+        try:
+            reader, writer = await asyncio.open_connection("127.0.0.1", 18428)
+            writer.write(b"GET /api/youtube/client-secrets/status HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            await writer.drain()
+            response = await asyncio.wait_for(reader.read(4096), timeout=5)
+            response_str = response.decode("utf-8", errors="replace")
+            assert "200 OK" in response_str
+            writer.close()
+        finally:
+            await server.stop()
