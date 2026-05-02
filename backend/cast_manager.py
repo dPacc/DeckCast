@@ -184,7 +184,15 @@ class CastManager:
                 except Exception:
                     pass
 
+    def _kill_system_orphans(self):
+        for pattern in [PIPE_PATH, LIVE_DIR]:
+            try:
+                subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, timeout=5)
+            except Exception:
+                pass
+
     def _prepare(self):
+        self._kill_system_orphans()
         if os.path.exists(LIVE_DIR):
             shutil.rmtree(LIVE_DIR, ignore_errors=True)
         os.makedirs(LIVE_DIR, mode=0o777, exist_ok=True)
@@ -202,7 +210,7 @@ class CastManager:
         framerate: int = 60,
         record: bool = False,
     ) -> dict:
-        if self._is_running():
+        if self._is_running() or self._state in ("starting", "live"):
             return {"success": False, "error": "Cast already running"}
 
         try:
@@ -382,6 +390,7 @@ class CastManager:
                     except ProcessLookupError:
                         pass
 
+            self._kill_system_orphans()
             self._reset()
 
             if os.path.exists(LIVE_DIR):
