@@ -1,8 +1,8 @@
 import { FC, useState, useEffect, useCallback } from "react";
 import {
   ButtonItem,
+  Focusable,
   PanelSectionRow,
-  DropdownItem,
   ToggleField,
 } from "@decky/ui";
 import {
@@ -17,7 +17,7 @@ import type { CastStatus } from "../types";
 
 export const CastPanel: FC = () => {
   const [resolution, setResolution] = useState("1280x800");
-  const [bitrate, setBitrate] = useState("4000k");
+  const [bitrate, setBitrate] = useState("6000k");
   const [record, setRecord] = useState(false);
   const [status, setStatus] = useState<CastStatus>({ status: "offline" });
   const [transferRunning, setTransferRunning] = useState(false);
@@ -27,16 +27,16 @@ export const CastPanel: FC = () => {
 
   const pollStatus = useCallback(async () => {
     try {
-      const [castSt, transferSt] = await Promise.all([
-        getCastStatus(),
-        getTransferStatus(),
-      ]);
-      setStatus(castSt);
-      setTransferRunning(transferSt.running);
-      if (transferSt.ip) setTransferIp(transferSt.ip);
-    } catch {
-      // ignore
-    }
+      const castSt = await getCastStatus();
+      if (castSt && castSt.status) setStatus(castSt);
+    } catch { /* ignore */ }
+    try {
+      const transferSt = await getTransferStatus();
+      if (transferSt) {
+        setTransferRunning(transferSt.running);
+        if (transferSt.ip) setTransferIp(transferSt.ip);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export const CastPanel: FC = () => {
         await startTransferServer(DEFAULT_TRANSFER_PORT, null);
         setTransferRunning(true);
       }
-      const result = await startCast(resolution, bitrate, 30, record);
+      const result = await startCast(resolution, bitrate, 60, record);
       if (!result.success) {
         setError(result.error || "Failed to start cast");
       }
@@ -150,21 +150,49 @@ export const CastPanel: FC = () => {
           </PanelSectionRow>
 
           <PanelSectionRow>
-            <DropdownItem
-              label="Resolution"
-              rgOptions={CAST_RESOLUTION_OPTIONS.map((o) => ({ label: o.label, data: o.value }))}
-              selectedOption={resolution}
-              onChange={(opt) => setResolution(opt.data)}
-            />
+            <Focusable
+              onActivate={() => {
+                const idx = CAST_RESOLUTION_OPTIONS.findIndex((o) => o.value === resolution);
+                setResolution(CAST_RESOLUTION_OPTIONS[(idx + 1) % CAST_RESOLUTION_OPTIONS.length].value);
+              }}
+              onClick={() => {
+                const idx = CAST_RESOLUTION_OPTIONS.findIndex((o) => o.value === resolution);
+                setResolution(CAST_RESOLUTION_OPTIONS[(idx + 1) % CAST_RESOLUTION_OPTIONS.length].value);
+              }}
+              onOKButton={() => {
+                const idx = CAST_RESOLUTION_OPTIONS.findIndex((o) => o.value === resolution);
+                setResolution(CAST_RESOLUTION_OPTIONS[(idx + 1) % CAST_RESOLUTION_OPTIONS.length].value);
+              }}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", cursor: "pointer", borderRadius: "4px" }}
+            >
+              <span style={{ color: "#aaa", fontSize: "0.9em" }}>Resolution</span>
+              <span style={{ color: "#fff", fontSize: "0.9em", fontWeight: 600 }}>
+                {CAST_RESOLUTION_OPTIONS.find((o) => o.value === resolution)?.label}
+              </span>
+            </Focusable>
           </PanelSectionRow>
 
           <PanelSectionRow>
-            <DropdownItem
-              label="Quality"
-              rgOptions={BITRATE_OPTIONS.map((o) => ({ label: o.label, data: o.value }))}
-              selectedOption={bitrate}
-              onChange={(opt) => setBitrate(opt.data)}
-            />
+            <Focusable
+              onActivate={() => {
+                const idx = BITRATE_OPTIONS.findIndex((o) => o.value === bitrate);
+                setBitrate(BITRATE_OPTIONS[(idx + 1) % BITRATE_OPTIONS.length].value);
+              }}
+              onClick={() => {
+                const idx = BITRATE_OPTIONS.findIndex((o) => o.value === bitrate);
+                setBitrate(BITRATE_OPTIONS[(idx + 1) % BITRATE_OPTIONS.length].value);
+              }}
+              onOKButton={() => {
+                const idx = BITRATE_OPTIONS.findIndex((o) => o.value === bitrate);
+                setBitrate(BITRATE_OPTIONS[(idx + 1) % BITRATE_OPTIONS.length].value);
+              }}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", cursor: "pointer", borderRadius: "4px" }}
+            >
+              <span style={{ color: "#aaa", fontSize: "0.9em" }}>Quality</span>
+              <span style={{ color: "#fff", fontSize: "0.9em", fontWeight: 600 }}>
+                {BITRATE_OPTIONS.find((o) => o.value === bitrate)?.label}
+              </span>
+            </Focusable>
           </PanelSectionRow>
 
           <PanelSectionRow>

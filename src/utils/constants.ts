@@ -37,10 +37,10 @@ export const CAST_RESOLUTION_OPTIONS = [
 ];
 
 export const BITRATE_OPTIONS = [
-  { label: "2500 kbps", value: "2500k" },
-  { label: "4000 kbps", value: "4000k" },
-  { label: "6000 kbps", value: "6000k" },
-  { label: "8000 kbps", value: "8000k" },
+  { label: "4 Mbps (low)", value: "4000k" },
+  { label: "6 Mbps (balanced)", value: "6000k" },
+  { label: "8 Mbps (high)", value: "8000k" },
+  { label: "12 Mbps (max)", value: "12000k" },
 ];
 
 export const FRAMERATE_OPTIONS = [
