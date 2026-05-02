@@ -771,14 +771,14 @@
       }
 
       hls = new Hls({
-        liveSyncDurationCount: 2,
-        liveMaxLatencyDurationCount: 4,
+        liveSyncDurationCount: 1,
+        liveMaxLatencyDurationCount: 3,
         maxLiveSyncPlaybackRate: 1.5,
         enableWorker: true,
-        lowLatencyMode: true,
+        lowLatencyMode: false,
         backBufferLength: 4,
-        maxBufferLength: 4,
-        maxMaxBufferLength: 8,
+        maxBufferLength: 8,
+        maxMaxBufferLength: 16,
         liveDurationInfinity: true,
         highBufferWatchdogPeriod: 1,
       });

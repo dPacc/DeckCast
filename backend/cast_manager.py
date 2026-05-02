@@ -259,7 +259,7 @@ class CastManager:
             "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
         ]
 
-        hls_flags = "delete_segments+append_list+omit_endlist+split_by_time"
+        hls_flags = "delete_segments+append_list+omit_endlist"
 
         if record:
             RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -269,7 +269,7 @@ class CastManager:
             ffmpeg_cmd += [
                 "-f", "tee", "-map", "0:v", "-map", "1:a",
                 (
-                    f"[f=hls:hls_time=1:hls_list_size=5"
+                    f"[f=hls:hls_time=2:hls_list_size=5"
                     f":hls_flags={hls_flags}"
                     f":hls_segment_filename={seg_pattern}]{playlist}"
                     f"|[f=mp4:movflags=+faststart]{rec_path}"
@@ -278,7 +278,7 @@ class CastManager:
         else:
             ffmpeg_cmd += [
                 "-f", "hls",
-                "-hls_time", "1",
+                "-hls_time", "2",
                 "-hls_list_size", "5",
                 "-hls_flags", hls_flags,
                 "-hls_segment_filename", seg_pattern,
