@@ -296,6 +296,46 @@ def mux_recording(clip_dir: str) -> Optional[str]:
         return None
 
 
+def enhance_recording(source_path: str, target_resolution: str = "1920x1080") -> Optional[str]:
+    ENHANCE_CACHE = MUX_CACHE_DIR.parent / "enhanced"
+    ENHANCE_CACHE.mkdir(parents=True, exist_ok=True)
+
+    source = Path(source_path)
+    cache_key = f"{source.stem}_{target_resolution.replace('x', '_')}"
+    output_path = ENHANCE_CACHE / f"{cache_key}.mp4"
+
+    if output_path.exists():
+        return str(output_path)
+
+    width, height = target_resolution.split("x")
+
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-i", source_path,
+                "-vf", f"scale={width}:{height}:flags=lanczos,unsharp=5:5:0.5:5:5:0.0",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "20",
+                "-c:a", "copy",
+                "-movflags", "+faststart",
+                "-y",
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        if result.returncode != 0:
+            logger.error(f"Enhance failed: {result.stderr}")
+            return None
+        return str(output_path)
+    except Exception as e:
+        logger.error(f"Enhance failed for {source_path}: {e}")
+        return None
+
+
 def scan_recordings(extra_paths: list[str] = None) -> list[dict]:
     recordings = []
     seen = set()
