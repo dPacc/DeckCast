@@ -15,7 +15,7 @@ export function useRecordings() {
       const result = await getRecordings();
       setRecordings(result || []);
     } catch (e: any) {
-      setError(e?.message || "Failed to load recordings");
+      setError(String(e?.message || e || "Unknown error"));
     } finally {
       setLoading(false);
     }
