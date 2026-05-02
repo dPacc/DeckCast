@@ -1,5 +1,5 @@
 import { definePlugin } from "@decky/api";
-import { FC, useState, useCallback } from "react";
+import { FC, useState, useCallback, useEffect } from "react";
 import {
   PanelSection,
   PanelSectionRow,
@@ -15,7 +15,9 @@ import { YouTubeUpload } from "./components/YouTubeUpload";
 import { ClipTrimmer } from "./components/ClipTrimmer";
 import { LiveStreamSetup } from "./components/LiveStreamSetup";
 import { Settings } from "./components/Settings";
-import type { Recording, PluginSettings } from "./types";
+import { startCast, stopCast, getCastStatus, getTransferStatus, startTransferServer } from "./utils/api";
+import { DEFAULT_TRANSFER_PORT } from "./utils/constants";
+import type { Recording, PluginSettings, CastStatus } from "./types";
 
 type Tab = "recordings" | "transfer" | "cast" | "youtube-auth" | "youtube-upload" | "trimmer" | "stream" | "settings";
 
@@ -24,7 +26,67 @@ const DeckCastPanel: FC = () => {
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
   const [settings, setSettings] = useState<PluginSettings | null>(null);
 
+  // Cast state — single source of truth
+  const [castStatus, setCastStatus] = useState<CastStatus>({ status: "offline" });
+  const [castLoading, setCastLoading] = useState(false);
+  const [transferIp, setTransferIp] = useState("");
+
+  // Cast settings
+  const [castResolution, setCastResolution] = useState("1280x800");
+  const [castBitrate, setCastBitrate] = useState("6000k");
+  const [castRecord, setCastRecord] = useState(false);
+
   const goTo = useCallback((t: Tab) => setTab(t), []);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const st = await getCastStatus();
+        if (st && st.status) setCastStatus(st);
+      } catch {}
+      try {
+        const tr = await getTransferStatus();
+        if (tr?.ip) setTransferIp(tr.ip);
+      } catch {}
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const castIsLive = castStatus.status === "live" || castStatus.status === "starting";
+
+  const handleStartCast = useCallback(async () => {
+    if (castIsLive) return;
+    setCastLoading(true);
+    try {
+      const tr = await getTransferStatus();
+      if (!tr?.running) {
+        await startTransferServer(DEFAULT_TRANSFER_PORT, null);
+      }
+      setCastStatus({ status: "starting" });
+      startCast(castResolution, castBitrate, 60, castRecord).catch(() => {});
+    } catch {}
+    setCastLoading(false);
+  }, [castIsLive, castResolution, castBitrate, castRecord]);
+
+  const handleStopCast = useCallback(async () => {
+    setCastLoading(true);
+    try {
+      await stopCast();
+      const st = await getCastStatus();
+      if (st && st.status) setCastStatus(st);
+    } catch {}
+    setCastLoading(false);
+  }, []);
+
+  const handleToggleCast = useCallback(async () => {
+    if (castIsLive) {
+      await handleStopCast();
+    } else {
+      await handleStartCast();
+    }
+  }, [castIsLive, handleStartCast, handleStopCast]);
 
   const handleSelectRecording = useCallback((rec: Recording) => {
     setSelectedRecording(rec);
@@ -35,9 +97,7 @@ const DeckCastPanel: FC = () => {
     setTab("recordings");
   }, []);
 
-  const handleTrimmed = useCallback((_outputPath: string) => {
-    // Could auto-navigate to upload, for now just stay on trimmer
-  }, []);
+  const handleTrimmed = useCallback((_outputPath: string) => {}, []);
 
   // Recording action menu
   if (selectedRecording && tab === "recordings") {
@@ -77,9 +137,60 @@ const DeckCastPanel: FC = () => {
 
   return (
     <PanelSection title="DeckCast">
-      {/* Navigation tabs */}
       {tab === "recordings" && (
         <>
+          {/* Cast control — single start/stop button */}
+          <PanelSectionRow>
+            <ButtonItem
+              layout="below"
+              onClick={handleToggleCast}
+              disabled={castLoading}
+              bottomSeparator="none"
+            >
+              <span style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                color: castIsLive ? "#ff4444" : "#fff",
+              }}>
+                {castIsLive && (
+                  <span style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#ff4444",
+                    boxShadow: "0 0 6px rgba(255,68,68,0.6)",
+                  }} />
+                )}
+                <FaTv />
+                {castLoading
+                  ? (castIsLive ? "Stopping..." : "Starting...")
+                  : (castIsLive ? "Stop Casting" : "Start Casting")}
+              </span>
+            </ButtonItem>
+          </PanelSectionRow>
+
+          {/* Cast URL when live */}
+          {castIsLive && transferIp && (
+            <PanelSectionRow>
+              <div style={{
+                padding: "8px",
+                textAlign: "center",
+                background: "rgba(255, 68, 68, 0.1)",
+                borderRadius: "8px",
+                border: "1px solid rgba(255, 68, 68, 0.2)",
+              }}>
+                <div style={{ fontSize: "0.85em", color: "#7c3aed", fontFamily: "monospace", wordBreak: "break-all" }}>
+                  http://{transferIp}:8420/cast
+                </div>
+                <div style={{ fontSize: "0.72em", color: "#888", marginTop: "2px" }}>
+                  Open on any device to watch
+                </div>
+              </div>
+            </PanelSectionRow>
+          )}
+
+          {/* Navigation */}
           <PanelSectionRow>
             <Focusable style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
               <NavButton icon={<FaWifi />} label="Share" onClick={() => goTo("transfer")} />
@@ -104,7 +215,18 @@ const DeckCastPanel: FC = () => {
       {tab === "cast" && (
         <>
           <BackButton onClick={() => goTo("recordings")} />
-          <CastPanel />
+          <CastPanel
+            castStatus={castStatus}
+            transferIp={transferIp}
+            resolution={castResolution}
+            bitrate={castBitrate}
+            record={castRecord}
+            loading={castLoading}
+            onResolutionChange={setCastResolution}
+            onBitrateChange={setCastBitrate}
+            onRecordChange={setCastRecord}
+            onStop={handleStopCast}
+          />
         </>
       )}
 
