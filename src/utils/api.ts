@@ -16,6 +16,9 @@ const trimClipCall = callable<[string, number, number, string | null], TrimResul
 const startStreamCall = callable<[string, string, string, string, number], StreamResult>("start_stream");
 const stopStreamCall = callable<[], StreamResult>("stop_stream");
 const getStreamStatusCall = callable<[], StreamStatus>("get_stream_status");
+const startCastCall = callable<[string, string, number, boolean], CastResult>("start_cast");
+const stopCastCall = callable<[], CastResult>("stop_cast");
+const getCastStatusCall = callable<[], CastStatus>("get_cast_status");
 const getSettingsCall = callable<[], PluginSettings>("get_settings");
 const saveSettingsCall = callable<[PluginSettings], boolean>("save_settings");
 
@@ -105,6 +108,23 @@ export async function getStreamStatus() {
   return await getStreamStatusCall();
 }
 
+export async function startCast(
+  resolution: string,
+  bitrate: string,
+  framerate: number,
+  record: boolean,
+) {
+  return await startCastCall(resolution, bitrate, framerate, record);
+}
+
+export async function stopCast() {
+  return await stopCastCall();
+}
+
+export async function getCastStatus() {
+  return await getCastStatusCall();
+}
+
 export async function getSettings() {
   return await getSettingsCall();
 }
@@ -120,6 +140,7 @@ import type {
   YouTubeAuthStatus,
   UploadProgress,
   StreamStatus,
+  CastStatus,
   PluginSettings,
 } from "../types";
 
@@ -155,6 +176,12 @@ interface TrimResult {
 }
 
 interface StreamResult {
+  success: boolean;
+  status?: string;
+  error?: string;
+}
+
+interface CastResult {
   success: boolean;
   status?: string;
   error?: string;

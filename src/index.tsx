@@ -6,9 +6,10 @@ import {
   ButtonItem,
   Focusable,
 } from "@decky/ui";
-import { FaVideo, FaWifi, FaYoutube, FaCut, FaBroadcastTower, FaCog } from "react-icons/fa";
+import { FaVideo, FaWifi, FaYoutube, FaCut, FaBroadcastTower, FaCog, FaTv } from "react-icons/fa";
 import { RecordingBrowser } from "./components/RecordingBrowser";
 import { TransferPanel } from "./components/TransferPanel";
+import { CastPanel } from "./components/CastPanel";
 import { YouTubeAuth } from "./components/YouTubeAuth";
 import { YouTubeUpload } from "./components/YouTubeUpload";
 import { ClipTrimmer } from "./components/ClipTrimmer";
@@ -16,7 +17,7 @@ import { LiveStreamSetup } from "./components/LiveStreamSetup";
 import { Settings } from "./components/Settings";
 import type { Recording, PluginSettings } from "./types";
 
-type Tab = "recordings" | "transfer" | "youtube-auth" | "youtube-upload" | "trimmer" | "stream" | "settings";
+type Tab = "recordings" | "transfer" | "cast" | "youtube-auth" | "youtube-upload" | "trimmer" | "stream" | "settings";
 
 const DeckCastPanel: FC = () => {
   const [tab, setTab] = useState<Tab>("recordings");
@@ -81,7 +82,8 @@ const DeckCastPanel: FC = () => {
         <>
           <PanelSectionRow>
             <Focusable style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-              <NavButton icon={<FaWifi />} label="Transfer" onClick={() => goTo("transfer")} />
+              <NavButton icon={<FaWifi />} label="Share" onClick={() => goTo("transfer")} />
+              <NavButton icon={<FaTv />} label="Cast" onClick={() => goTo("cast")} />
               <NavButton icon={<FaYoutube />} label="YouTube" onClick={() => goTo("youtube-auth")} />
               <NavButton icon={<FaBroadcastTower />} label="Stream" onClick={() => goTo("stream")} />
               <NavButton icon={<FaCog />} label="Settings" onClick={() => goTo("settings")} />
@@ -96,6 +98,13 @@ const DeckCastPanel: FC = () => {
         <>
           <BackButton onClick={() => goTo("recordings")} />
           <TransferPanel settings={settings} />
+        </>
+      )}
+
+      {tab === "cast" && (
+        <>
+          <BackButton onClick={() => goTo("recordings")} />
+          <CastPanel />
         </>
       )}
 
@@ -145,9 +154,24 @@ const NavButton: FC<{ icon: React.ReactNode; label: string; onClick: () => void 
 
 const BackButton: FC<{ onClick: () => void }> = ({ onClick }) => (
   <PanelSectionRow>
-    <ButtonItem layout="below" onClick={onClick} bottomSeparator="none">
+    <Focusable
+      onActivate={onClick}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "10px 16px",
+        cursor: "pointer",
+        fontSize: "0.9em",
+        color: "#aaa",
+        borderRadius: "4px",
+        background: "transparent",
+      }}
+      onOKButton={onClick}
+    >
       ← Back
-    </ButtonItem>
+    </Focusable>
   </PanelSectionRow>
 );
 

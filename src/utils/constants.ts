@@ -30,6 +30,12 @@ export const RESOLUTION_OPTIONS = [
   { label: "480p", value: "854x480" },
 ];
 
+export const CAST_RESOLUTION_OPTIONS = [
+  { label: "Native (1280x800)", value: "1280x800" },
+  { label: "720p", value: "1280x720" },
+  { label: "1080p", value: "1920x1080" },
+];
+
 export const BITRATE_OPTIONS = [
   { label: "2500 kbps", value: "2500k" },
   { label: "4000 kbps", value: "4000k" },

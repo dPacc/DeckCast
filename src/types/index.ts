@@ -79,4 +79,9 @@ export interface PluginSettings {
   };
 }
 
+export interface CastStatus {
+  status: "offline" | "starting" | "live" | "error";
+  error?: string | null;
+}
+
 export type SortMode = "date" | "size" | "game";
