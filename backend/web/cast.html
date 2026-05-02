@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>DeckCast — Live</title>
+<style>
+  /* ---- Reset & Base ---- */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 15px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #0a0a14;
+    color: #f0f0f5;
+    line-height: 1.5;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  /* ---- Scrollbar ---- */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 3px; }
+
+  /* ---- Top Bar ---- */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 20px;
+    background: rgba(10, 10, 20, 0.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid #2a2a3e;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-text {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    white-space: nowrap;
+  }
+
+  .top-bar-center {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ef4444;
+    animation: live-glow 2s ease-in-out infinite;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: dot-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes live-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 12px rgba(239, 68, 68, 0.15); }
+    50% { opacity: 0.85; box-shadow: 0 0 20px rgba(239, 68, 68, 0.25); }
+  }
+
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.75); }
+  }
+
+  .elapsed-time {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #8888a0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ctrl-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #8888a0;
+    transition: color 200ms ease, background 200ms ease;
+  }
+
+  .ctrl-btn:hover {
+    color: #f0f0f5;
+    background: #252640;
+  }
+
+  .volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 80px;
+    height: 4px;
+    background: #2a2a3e;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7c3aed;
+    cursor: pointer;
+    transition: transform 150ms ease;
+  }
+
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7c3aed;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ---- Video Container ---- */
+  .video-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    outline: none;
+  }
+
+  /* ---- Offline State ---- */
+  .offline-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 24px;
+    padding: 40px;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+  }
+
+  .offline-icon {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .offline-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(124, 58, 237, 0.2);
+    animation: ring-pulse 3s ease-in-out infinite;
+  }
+
+  .offline-ring:nth-child(2) {
+    inset: -12px;
+    animation-delay: 0.5s;
+    border-color: rgba(124, 58, 237, 0.12);
+  }
+
+  .offline-ring:nth-child(3) {
+    inset: -24px;
+    animation-delay: 1s;
+    border-color: rgba(124, 58, 237, 0.06);
+  }
+
+  @keyframes ring-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.5; }
+  }
+
+  .offline-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 400px;
+  }
+
+  .offline-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f0f0f5;
+    letter-spacing: -0.02em;
+  }
+
+  .offline-text {
+    font-size: 0.95rem;
+    color: #555570;
+    line-height: 1.7;
+    max-width: 320px;
+  }
+
+  .cast-start-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 36px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    border-radius: 28px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 200ms, transform 200ms, box-shadow 200ms;
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35);
+  }
+
+  .cast-start-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(239, 68, 68, 0.45);
+  }
+
+  .cast-start-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .cast-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin-top: 4px;
+  }
+
+  .cast-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #8888a0;
+  }
+
+  .cast-option select {
+    background: #0f0f1a;
+    border: 1px solid #2a2a3e;
+    border-radius: 8px;
+    color: #f0f0f5;
+    padding: 5px 10px;
+    font-size: 0.82rem;
+  }
+
+  .cast-option input[type="checkbox"] {
+    accent-color: #7c3aed;
+    margin-right: 8px;
+  }
+
+  .offline-links {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .offline-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: rgba(124, 58, 237, 0.12);
+    border: 1px solid rgba(124, 58, 237, 0.25);
+    border-radius: 24px;
+    color: #a78bfa;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 200ms ease, border-color 200ms ease;
+  }
+
+  .offline-link:hover {
+    background: rgba(124, 58, 237, 0.2);
+    border-color: rgba(124, 58, 237, 0.4);
+  }
+
+  .offline-polling {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: #555570;
+    margin-top: 4px;
+  }
+
+  .polling-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #555570;
+    animation: polling-blink 1.5s ease-in-out infinite;
+  }
+
+  .polling-dot:nth-child(2) { animation-delay: 0.2s; }
+  .polling-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes polling-blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* ---- Reconnecting Overlay ---- */
+  .reconnect-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .reconnect-overlay.visible {
+    display: flex;
+  }
+
+  .reconnect-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #2a2a3e;
+    border-top-color: #7c3aed;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .reconnect-text {
+    font-size: 0.92rem;
+    color: #8888a0;
+    font-weight: 500;
+  }
+
+  .stop-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #ef4444;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 200ms ease;
+  }
+
+  .stop-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+  }
+
+  /* ---- Hidden ---- */
+  .hidden {
+    display: none !important;
+  }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 640px) {
+    .top-bar {
+      height: 48px;
+      padding: 0 12px;
+    }
+
+    .logo-text {
+      font-size: 1rem;
+    }
+
+    .top-bar-center {
+      position: static;
+      transform: none;
+    }
+
+    .elapsed-time {
+      font-size: 0.8rem;
+    }
+
+    .volume-slider {
+      width: 56px;
+    }
+
+    .offline-title {
+      font-size: 1.25rem;
+    }
+
+    .offline-text {
+      font-size: 0.88rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .top-bar {
+      gap: 6px;
+    }
+
+    .logo-text {
+      display: none;
+    }
+
+    .volume-wrap .volume-slider {
+      width: 48px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="top-bar" id="top-bar">
+  <div class="top-bar-left">
+    <a class="logo" href="/" title="DeckCast Home">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="14" rx="3" stroke="#7c3aed" stroke-width="1.8"/>
+        <path d="M9 8.5L16 12L9 15.5V8.5Z" fill="#7c3aed"/>
+        <path d="M7 21L12 18L17 21" stroke="#7c3aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">DeckCast</span>
+    </a>
+  </div>
+  <div class="top-bar-center" id="live-status">
+    <div class="live-badge" id="live-badge">
+      <span class="live-dot"></span>
+      <span>LIVE</span>
+    </div>
+    <span class="elapsed-time" id="elapsed-time">00:00:00</span>
+  </div>
+  <div class="top-bar-right" id="viewer-controls">
+    <div class="volume-wrap">
+      <button class="ctrl-btn" id="mute-btn" aria-label="Toggle mute" title="Toggle mute">
+        <svg id="volume-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14" id="vol-high"/><path d="M15.54 8.46a5 5 0 010 7.07" id="vol-med"/></svg>
+      </button>
+      <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="0.8" aria-label="Volume">
+    </div>
+    <button class="ctrl-btn" id="pip-btn" aria-label="Picture in Picture" title="Picture in Picture">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="11" y="9" width="9" height="7" rx="1" fill="currentColor" opacity="0.3"/></svg>
+    </button>
+    <button class="ctrl-btn" id="fullscreen-btn" aria-label="Fullscreen" title="Fullscreen">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+    </button>
+    <button class="ctrl-btn stop-btn" onclick="stopCasting()" aria-label="Stop casting" title="Stop casting">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      Stop
+    </button>
+  </div>
+</div>
+
+<!-- Video Container -->
+<div class="video-container" id="video-container">
+  <video id="live-video" playsinline autoplay></video>
+
+  <!-- Offline State -->
+  <div class="offline-state" id="offline-state">
+    <div class="offline-icon">
+      <div class="offline-ring"></div>
+      <div class="offline-ring"></div>
+      <div class="offline-ring"></div>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="4" width="20" height="14" rx="3" stroke="#7c3aed" stroke-width="1.5"/>
+        <path d="M9 8.5L16 12L9 15.5V8.5Z" fill="#7c3aed" opacity="0.6"/>
+        <path d="M7 21L12 18L17 21" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="offline-card">
+      <h1 class="offline-title">Not Currently Live</h1>
+      <p class="offline-text">Start casting your Steam Deck screen. Anyone on your network can watch at this URL.</p>
+      <button class="cast-start-btn" id="cast-start-btn" onclick="startCasting()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16.1A5 5 0 015.9 20M2 12.05A9 9 0 019.95 20M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
+        Start Casting
+      </button>
+      <div class="cast-options" id="cast-options">
+        <label class="cast-option">
+          <span>Resolution</span>
+          <select id="cast-resolution">
+            <option value="1280x800">1280x800 (native)</option>
+            <option value="1280x720">1280x720</option>
+            <option value="1920x1080">1920x1080</option>
+          </select>
+        </label>
+        <label class="cast-option">
+          <span>Quality</span>
+          <select id="cast-bitrate">
+            <option value="3000k">3 Mbps (low)</option>
+            <option value="4000k" selected>4 Mbps (balanced)</option>
+            <option value="6000k">6 Mbps (high)</option>
+            <option value="8000k">8 Mbps (max)</option>
+          </select>
+        </label>
+        <label class="cast-option">
+          <input type="checkbox" id="cast-record"> Record while casting
+        </label>
+      </div>
+      <div class="offline-links">
+        <a class="offline-link" href="/">
+          Browse Recordings
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+      </div>
+      <div class="offline-polling">
+        <span class="polling-dot"></span>
+        <span class="polling-dot"></span>
+        <span class="polling-dot"></span>
+        <span>Checking for live stream</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reconnecting Overlay -->
+  <div class="reconnect-overlay" id="reconnect-overlay">
+    <div class="reconnect-spinner"></div>
+    <span class="reconnect-text">Reconnecting to stream...</span>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+(function() {
+  'use strict';
+
+  // ---- Config ----
+  const STREAM_URL = '/live/stream.m3u8';
+  const STATUS_URL = '/api/cast/status';
+  const POLL_INTERVAL = 3000;
+  const RECONNECT_DELAY = 2000;
+  const MAX_RECONNECT_ATTEMPTS = 30;
+
+  // ---- State ----
+  let hls = null;
+  let isLive = false;
+  let startedAt = null;
+  let elapsedTimer = null;
+  let pollTimer = null;
+  let reconnectAttempts = 0;
+  let isMuted = false;
+  let lastVolume = 0.8;
+
+  // ---- DOM ----
+  const video = document.getElementById('live-video');
+  const offlineState = document.getElementById('offline-state');
+  const reconnectOverlay = document.getElementById('reconnect-overlay');
+  const liveStatus = document.getElementById('live-status');
+  const viewerControls = document.getElementById('viewer-controls');
+  const elapsedTimeEl = document.getElementById('elapsed-time');
+  const volumeSlider = document.getElementById('volume-slider');
+  const muteBtn = document.getElementById('mute-btn');
+  const pipBtn = document.getElementById('pip-btn');
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  const volHigh = document.getElementById('vol-high');
+  const volMed = document.getElementById('vol-med');
+
+  // ---- Utility ----
+  function formatElapsed(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    const pad = (n) => n < 10 ? '0' + n : '' + n;
+    return pad(h) + ':' + pad(m) + ':' + pad(s);
+  }
+
+  function updateVolumeIcon() {
+    const vol = video.volume;
+    const muted = video.muted;
+    if (muted || vol === 0) {
+      volHigh.style.display = 'none';
+      volMed.style.display = 'none';
+    } else if (vol < 0.5) {
+      volHigh.style.display = 'none';
+      volMed.style.display = '';
+    } else {
+      volHigh.style.display = '';
+      volMed.style.display = '';
+    }
+  }
+
+  // ---- UI State ----
+  function showLiveUI() {
+    offlineState.classList.add('hidden');
+    reconnectOverlay.classList.remove('visible');
+    liveStatus.classList.remove('hidden');
+    viewerControls.classList.remove('hidden');
+    video.style.display = '';
+  }
+
+  function showOfflineUI() {
+    offlineState.classList.remove('hidden');
+    reconnectOverlay.classList.remove('visible');
+    liveStatus.classList.add('hidden');
+    viewerControls.classList.add('hidden');
+    video.style.display = 'none';
+  }
+
+  function showReconnectUI() {
+    reconnectOverlay.classList.add('visible');
+  }
+
+  // ---- Elapsed Time ----
+  function startElapsedTimer() {
+    stopElapsedTimer();
+    updateElapsed();
+    elapsedTimer = setInterval(updateElapsed, 1000);
+  }
+
+  function stopElapsedTimer() {
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer);
+      elapsedTimer = null;
+    }
+  }
+
+  function updateElapsed() {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    elapsedTimeEl.textContent = formatElapsed(elapsed);
+  }
+
+  // ---- Status Polling ----
+  async function checkStatus() {
+    try {
+      const res = await fetch(STATUS_URL);
+      if (!res.ok) return { live: false };
+      return await res.json();
+    } catch {
+      return { live: false };
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(async () => {
+      const status = await checkStatus();
+      if (status.live && !isLive) {
+        stopPolling();
+        startStream(status.started_at);
+      }
+    }, POLL_INTERVAL);
+  }
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  // ---- HLS Stream ----
+  function startStream(streamStartedAt) {
+    isLive = true;
+    reconnectAttempts = 0;
+    startedAt = streamStartedAt ? streamStartedAt * 1000 : Date.now();
+
+    showLiveUI();
+    startElapsedTimer();
+
+    if (Hls.isSupported()) {
+      if (hls) {
+        hls.destroy();
+      }
+
+      hls = new Hls({
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 6,
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 30,
+      });
+
+      hls.loadSource(STREAM_URL);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              handleStreamDrop();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              handleStreamDrop();
+              break;
+          }
+        }
+      });
+
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Native HLS (Safari)
+      video.src = STREAM_URL;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {});
+      });
+
+      video.addEventListener('error', () => {
+        handleStreamDrop();
+      });
+    } else {
+      console.error('HLS is not supported in this browser.');
+    }
+
+    // Apply saved volume
+    video.volume = lastVolume;
+    video.muted = isMuted;
+    updateVolumeIcon();
+  }
+
+  function stopStream() {
+    isLive = false;
+    startedAt = null;
+
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+
+    video.removeAttribute('src');
+    video.load();
+
+    stopElapsedTimer();
+    elapsedTimeEl.textContent = '00:00:00';
+    showOfflineUI();
+    startPolling();
+  }
+
+  function handleStreamDrop() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      stopStream();
+      return;
+    }
+
+    reconnectAttempts++;
+    showReconnectUI();
+
+    setTimeout(async () => {
+      const status = await checkStatus();
+      if (status.live) {
+        // Stream still going, try reconnecting HLS
+        if (hls) {
+          hls.destroy();
+          hls = null;
+        }
+        startStream(status.started_at);
+      } else {
+        // Stream ended
+        stopStream();
+      }
+    }, RECONNECT_DELAY);
+  }
+
+  // ---- Controls ----
+  volumeSlider.addEventListener('input', () => {
+    const val = parseFloat(volumeSlider.value);
+    video.volume = val;
+    lastVolume = val;
+    video.muted = false;
+    isMuted = false;
+    updateVolumeIcon();
+  });
+
+  muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    video.muted = isMuted;
+    if (isMuted) {
+      volumeSlider.value = 0;
+    } else {
+      volumeSlider.value = lastVolume;
+      video.volume = lastVolume;
+    }
+    updateVolumeIcon();
+  });
+
+  pipBtn.addEventListener('click', async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (video.requestPictureInPicture) {
+        await video.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('PiP not available:', err);
+    }
+  });
+
+  fullscreenBtn.addEventListener('click', () => {
+    const container = document.getElementById('video-container');
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (container.requestFullscreen) {
+      container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen();
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+      fullscreenBtn.click();
+    } else if (e.key === 'm' || e.key === 'M') {
+      muteBtn.click();
+    } else if (e.key === ' ') {
+      e.preventDefault();
+      if (video.paused) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    }
+  });
+
+  // ---- Cast Controls ----
+  window.startCasting = async function() {
+    const btn = document.getElementById('cast-start-btn');
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
+    try {
+      const res = await fetch('/api/cast/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resolution: document.getElementById('cast-resolution').value,
+          bitrate: document.getElementById('cast-bitrate').value,
+          framerate: 30,
+          record: document.getElementById('cast-record').checked,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTimeout(() => {
+          startStream(Date.now() / 1000);
+        }, 3000);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16.1A5 5 0 015.9 20M2 12.05A9 9 0 019.95 20M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Start Casting';
+        alert('Failed to start: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16.1A5 5 0 015.9 20M2 12.05A9 9 0 019.95 20M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Start Casting';
+      alert('Failed: ' + err.message);
+    }
+  };
+
+  window.stopCasting = async function() {
+    try {
+      await fetch('/api/cast/stop', { method: 'POST' });
+    } catch (e) {}
+    stopStream();
+    showOfflineUI();
+    const btn = document.getElementById('cast-start-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16.1A5 5 0 015.9 20M2 12.05A9 9 0 019.95 20M2 8V6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Start Casting';
+    }
+    startPolling();
+  };
+
+  // ---- Init ----
+  async function init() {
+    showOfflineUI();
+
+    const status = await checkStatus();
+    if (status.live) {
+      startStream(status.started_at);
+    } else {
+      startPolling();
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
