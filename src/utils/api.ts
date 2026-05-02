@@ -1,69 +1,72 @@
 import { callable } from "@decky/api";
 
+function unwrap<T>(res: any): T {
+  if (res && typeof res === "object" && "result" in res) {
+    return res.result as T;
+  }
+  return res as T;
+}
+
 const getRecordingsCall = callable<[], any>("get_recordings");
 const getRecordingInfoCall = callable<[string], any>("get_recording_info");
-const getThumbnailCall = callable<[string, number], string>("get_thumbnail");
-const startTransferServerCall = callable<[number, string | null], TransferServerResult>("start_transfer_server");
-const stopTransferServerCall = callable<[], boolean>("stop_transfer_server");
-const getTransferStatusCall = callable<[], TransferStatus>("get_transfer_status");
-const youtubeAuthStartCall = callable<[], AuthStartResult>("youtube_auth_start");
-const youtubeAuthCallbackCall = callable<[string], AuthResult>("youtube_auth_callback");
-const youtubeDisconnectCall = callable<[], boolean>("youtube_disconnect");
-const youtubeGetAuthStatusCall = callable<[], YouTubeAuthStatus>("youtube_get_auth_status");
-const youtubeUploadCall = callable<[string, string, string, string[], string, string], UploadStartResult>("youtube_upload");
-const getUploadProgressCall = callable<[], UploadProgress>("get_upload_progress");
-const trimClipCall = callable<[string, number, number, string | null], TrimResult>("trim_clip");
-const startStreamCall = callable<[string, string, string, string, number], StreamResult>("start_stream");
-const stopStreamCall = callable<[], StreamResult>("stop_stream");
-const getStreamStatusCall = callable<[], StreamStatus>("get_stream_status");
-const startCastCall = callable<[string, string, number, boolean], CastResult>("start_cast");
-const stopCastCall = callable<[], CastResult>("stop_cast");
-const getCastStatusCall = callable<[], CastStatus>("get_cast_status");
-const getSettingsCall = callable<[], PluginSettings>("get_settings");
-const saveSettingsCall = callable<[PluginSettings], boolean>("save_settings");
+const getThumbnailCall = callable<[string, number], any>("get_thumbnail");
+const startTransferServerCall = callable<[number, string | null], any>("start_transfer_server");
+const stopTransferServerCall = callable<[], any>("stop_transfer_server");
+const getTransferStatusCall = callable<[], any>("get_transfer_status");
+const youtubeAuthStartCall = callable<[], any>("youtube_auth_start");
+const youtubeAuthCallbackCall = callable<[string], any>("youtube_auth_callback");
+const youtubeDisconnectCall = callable<[], any>("youtube_disconnect");
+const youtubeGetAuthStatusCall = callable<[], any>("youtube_get_auth_status");
+const youtubeUploadCall = callable<[string, string, string, string[], string, string], any>("youtube_upload");
+const getUploadProgressCall = callable<[], any>("get_upload_progress");
+const trimClipCall = callable<[string, number, number, string | null], any>("trim_clip");
+const startStreamCall = callable<[string, string, string, string, number], any>("start_stream");
+const stopStreamCall = callable<[], any>("stop_stream");
+const getStreamStatusCall = callable<[], any>("get_stream_status");
+const startCastCall = callable<[string, string, number, boolean], any>("start_cast");
+const stopCastCall = callable<[], any>("stop_cast");
+const getCastStatusCall = callable<[], any>("get_cast_status");
+const getSettingsCall = callable<[], any>("get_settings");
+const saveSettingsCall = callable<[PluginSettings], any>("save_settings");
 
-export async function getRecordings() {
-  const res = await getRecordingsCall();
-  if (res && typeof res === "object" && "result" in res) {
-    return res.result as Recording[];
-  }
-  return res as Recording[];
+export async function getRecordings(): Promise<Recording[]> {
+  return unwrap<Recording[]>(await getRecordingsCall());
 }
 
 export async function getRecordingInfo(filepath: string) {
-  return await getRecordingInfoCall(filepath);
+  return unwrap<any>(await getRecordingInfoCall(filepath));
 }
 
 export async function getThumbnail(filepath: string, timestamp = 5.0) {
-  return await getThumbnailCall(filepath, timestamp);
+  return unwrap<string>(await getThumbnailCall(filepath, timestamp));
 }
 
 export async function startTransferServer(port = 8420, password: string | null = null) {
-  return await startTransferServerCall(port, password);
+  return unwrap<TransferServerResult>(await startTransferServerCall(port, password));
 }
 
 export async function stopTransferServer() {
-  return await stopTransferServerCall();
+  return unwrap<boolean>(await stopTransferServerCall());
 }
 
 export async function getTransferStatus() {
-  return await getTransferStatusCall();
+  return unwrap<TransferStatus>(await getTransferStatusCall());
 }
 
 export async function youtubeAuthStart() {
-  return await youtubeAuthStartCall();
+  return unwrap<AuthStartResult>(await youtubeAuthStartCall());
 }
 
 export async function youtubeAuthCallback(code: string) {
-  return await youtubeAuthCallbackCall(code);
+  return unwrap<AuthResult>(await youtubeAuthCallbackCall(code));
 }
 
 export async function youtubeDisconnect() {
-  return await youtubeDisconnectCall();
+  return unwrap<boolean>(await youtubeDisconnectCall());
 }
 
 export async function youtubeGetAuthStatus() {
-  return await youtubeGetAuthStatusCall();
+  return unwrap<YouTubeAuthStatus>(await youtubeGetAuthStatusCall());
 }
 
 export async function youtubeUpload(
@@ -74,11 +77,11 @@ export async function youtubeUpload(
   privacy: string,
   category: string,
 ) {
-  return await youtubeUploadCall(filepath, title, description, tags, privacy, category);
+  return unwrap<UploadStartResult>(await youtubeUploadCall(filepath, title, description, tags, privacy, category));
 }
 
 export async function getUploadProgress() {
-  return await getUploadProgressCall();
+  return unwrap<UploadProgress>(await getUploadProgressCall());
 }
 
 export async function trimClip(
@@ -87,7 +90,7 @@ export async function trimClip(
   endTime: number,
   outputPath: string | null = null,
 ) {
-  return await trimClipCall(filepath, startTime, endTime, outputPath);
+  return unwrap<TrimResult>(await trimClipCall(filepath, startTime, endTime, outputPath));
 }
 
 export async function startStream(
@@ -97,15 +100,15 @@ export async function startStream(
   bitrate: string,
   framerate: number,
 ) {
-  return await startStreamCall(rtmpUrl, streamKey, resolution, bitrate, framerate);
+  return unwrap<StreamResult>(await startStreamCall(rtmpUrl, streamKey, resolution, bitrate, framerate));
 }
 
 export async function stopStream() {
-  return await stopStreamCall();
+  return unwrap<StreamResult>(await stopStreamCall());
 }
 
 export async function getStreamStatus() {
-  return await getStreamStatusCall();
+  return unwrap<StreamStatus>(await getStreamStatusCall());
 }
 
 export async function startCast(
@@ -114,23 +117,23 @@ export async function startCast(
   framerate: number,
   record: boolean,
 ) {
-  return await startCastCall(resolution, bitrate, framerate, record);
+  return unwrap<CastResult>(await startCastCall(resolution, bitrate, framerate, record));
 }
 
 export async function stopCast() {
-  return await stopCastCall();
+  return unwrap<CastResult>(await stopCastCall());
 }
 
 export async function getCastStatus() {
-  return await getCastStatusCall();
+  return unwrap<CastStatus>(await getCastStatusCall());
 }
 
 export async function getSettings() {
-  return await getSettingsCall();
+  return unwrap<PluginSettings>(await getSettingsCall());
 }
 
 export async function saveSettings(settings: PluginSettings) {
-  return await saveSettingsCall(settings);
+  return unwrap<boolean>(await saveSettingsCall(settings));
 }
 
 // Local types for API responses
