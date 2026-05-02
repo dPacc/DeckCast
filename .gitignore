@@ -9,3 +9,6 @@ __pycache__/
 tmp/
 thumbnails/
 .env
+.DS_Store
+out/
+*.zip
