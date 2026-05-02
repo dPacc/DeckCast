@@ -5,7 +5,7 @@ from pathlib import Path
 
 logger = logging.getLogger("DeckCast")
 
-TRIM_OUTPUT_DIR = Path.home() / "Videos/DeckCast_Trimmed"
+TRIM_OUTPUT_DIR = Path("/home/deck") / "Videos/DeckCast_Trimmed"
 
 
 def trim_clip(

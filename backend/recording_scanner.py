@@ -9,8 +9,9 @@ from typing import Optional
 
 logger = logging.getLogger("DeckCast")
 
-STEAM_USERDATA = Path.home() / ".local/share/Steam/userdata"
-MUX_CACHE_DIR = Path.home() / "homebrew/data/DeckCast/muxed"
+DECK_HOME = Path("/home/deck")
+STEAM_USERDATA = DECK_HOME / ".local/share/Steam/userdata"
+MUX_CACHE_DIR = DECK_HOME / "homebrew/data/DeckCast/muxed"
 
 CLIP_SCAN_PATTERNS = [
     str(STEAM_USERDATA / "*/gamerecordings/clips/clip_*"),
@@ -21,7 +22,7 @@ SD_CARD_CLIP_PATTERNS = [
 ]
 
 LOOSE_VIDEO_PATHS = [
-    str(Path.home() / "Videos"),
+    str(DECK_HOME / "Videos"),
 ]
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".avi", ".mov"}
@@ -44,7 +45,7 @@ def _parse_date_from_clip_dir(clip_dir: str) -> Optional[str]:
 
 def _lookup_app_name(app_id: str) -> Optional[str]:
     acf_patterns = [
-        Path.home() / ".local/share/Steam/steamapps" / f"appmanifest_{app_id}.acf",
+        DECK_HOME / ".local/share/Steam/steamapps" / f"appmanifest_{app_id}.acf",
         Path(f"/run/media/mmcblk0p1/steamapps/appmanifest_{app_id}.acf"),
     ]
     for acf_path in acf_patterns:

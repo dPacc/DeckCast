@@ -24,7 +24,7 @@ from backend.stream_manager import StreamManager
 
 logger = decky_plugin.logger
 
-DATA_DIR = Path.home() / "homebrew/data/DeckCast"
+DATA_DIR = Path("/home/deck") / "homebrew/data/DeckCast"
 CONFIG_FILE = DATA_DIR / "config.json"
 DEFAULT_CONFIG = Path(__file__).parent / "defaults/config.json"
 
@@ -63,10 +63,18 @@ class Plugin:
 
     # ── Recordings ──────────────────────────────────────────────
 
-    async def get_recordings(self) -> list:
-        config = _load_config()
-        extra_paths = config.get("recording_paths", []) + config.get("sd_card_paths", [])
-        return scan_recordings(extra_paths)
+    async def get_recordings(self):
+        try:
+            config = _load_config()
+            extra_paths = config.get("recording_paths", []) + config.get("sd_card_paths", [])
+            result = scan_recordings(extra_paths)
+            logger.info(f"Found {len(result)} recordings")
+            return result
+        except Exception as e:
+            logger.error(f"get_recordings failed: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return []
 
     async def get_recording_info(self, filepath: str) -> dict:
         return get_recording_metadata(filepath)

@@ -5,7 +5,7 @@ from typing import Optional
 
 logger = logging.getLogger("DeckCast")
 
-CREDENTIALS_DIR = Path.home() / "homebrew/data/DeckCast"
+CREDENTIALS_DIR = Path("/home/deck") / "homebrew/data/DeckCast"
 TOKEN_FILE = CREDENTIALS_DIR / "youtube_token.json"
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload",
