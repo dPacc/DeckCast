@@ -560,7 +560,7 @@
 
 <!-- Video Container -->
 <div class="video-container" id="video-container">
-  <video id="live-video" playsinline autoplay></video>
+  <video id="live-video" playsinline autoplay muted></video>
 
   <!-- Offline State -->
   <div class="offline-state" id="offline-state">
@@ -787,7 +787,12 @@
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {});
+        video.muted = true;
+        video.play().then(() => {
+          video.muted = isMuted;
+          video.volume = lastVolume;
+          updateVolumeIcon();
+        }).catch(() => {});
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -804,17 +809,19 @@
               break;
           }
         }
-        // Auto-recover from non-fatal buffer stalls
-        if (!data.fatal && data.details === 'bufferStalledError') {
-          video.currentTime = video.buffered.length ? video.buffered.end(video.buffered.length - 1) - 0.5 : video.currentTime;
-        }
+        // Let HLS.js handle buffer stalls internally via maxLiveSyncPlaybackRate
       });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS (Safari)
       video.src = STREAM_URL;
       video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {});
+        video.muted = true;
+        video.play().then(() => {
+          video.muted = isMuted;
+          video.volume = lastVolume;
+          updateVolumeIcon();
+        }).catch(() => {});
       });
 
       video.addEventListener('error', () => {
@@ -824,9 +831,6 @@
       console.error('HLS is not supported in this browser.');
     }
 
-    // Apply saved volume
-    video.volume = lastVolume;
-    video.muted = isMuted;
     updateVolumeIcon();
   }
 
