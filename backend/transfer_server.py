@@ -232,6 +232,15 @@ class TransferServer:
             return
 
         filepath = recording["path"]
+
+        if recording.get("is_dash"):
+            from backend.recording_scanner import mux_recording
+            muxed = mux_recording(filepath)
+            if not muxed:
+                await self._send_response(writer, 500, "Failed to prepare recording")
+                return
+            filepath = muxed
+
         file_size = os.path.getsize(filepath)
         content_type = mimetypes.guess_type(filepath)[0] or "application/octet-stream"
 
