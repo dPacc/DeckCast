@@ -1,0 +1,10 @@
+{
+  "name": "DeckCast",
+  "author": "dPacc",
+  "flags": ["root", "debug"],
+  "publish": {
+    "tags": ["recording", "youtube", "streaming", "transfer", "video"],
+    "description": "Share Steam Deck recordings anywhere — Wi-Fi transfer, YouTube upload, clip trimming, and live streaming, all from Gaming Mode.",
+    "image": "https://raw.githubusercontent.com/dPacc/DeckCast/main/assets/icon.png"
+  }
+}

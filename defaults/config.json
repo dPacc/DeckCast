@@ -1,0 +1,28 @@
+{
+  "youtube": {
+    "default_privacy": "unlisted",
+    "title_template": "{game} - {date}",
+    "default_category": "20",
+    "default_tags": ["steamdeck", "gaming"]
+  },
+  "transfer": {
+    "port": 8420,
+    "password_enabled": false,
+    "password": ""
+  },
+  "recording_paths": [
+    "/home/deck/.local/share/Steam/userdata/*/gamerecordings/video",
+    "/home/deck/.local/share/Steam/userdata/*/screenshots/videos",
+    "/home/deck/Videos"
+  ],
+  "sd_card_paths": [
+    "/run/media/mmcblk0p1/steamapps/common",
+    "/run/media/mmcblk0p1/Videos"
+  ],
+  "stream": {
+    "resolution": "1280x720",
+    "bitrate": "4000k",
+    "framerate": 30,
+    "saved_stream_keys": []
+  }
+}
