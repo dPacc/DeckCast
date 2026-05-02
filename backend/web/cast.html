@@ -771,11 +771,16 @@
       }
 
       hls = new Hls({
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 6,
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 4,
+        maxLiveSyncPlaybackRate: 1.5,
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 30,
+        backBufferLength: 4,
+        maxBufferLength: 4,
+        maxMaxBufferLength: 8,
+        liveDurationInfinity: true,
+        highBufferWatchdogPeriod: 1,
       });
 
       hls.loadSource(STREAM_URL);
@@ -798,6 +803,10 @@
               handleStreamDrop();
               break;
           }
+        }
+        // Auto-recover from non-fatal buffer stalls
+        if (!data.fatal && data.details === 'bufferStalledError') {
+          video.currentTime = video.buffered.length ? video.buffered.end(video.buffered.length - 1) - 0.5 : video.currentTime;
         }
       });
 

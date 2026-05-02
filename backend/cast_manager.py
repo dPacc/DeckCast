@@ -72,21 +72,26 @@ class CastManager:
 
         cmd = [
             "ffmpeg",
+            "-fflags", "+nobuffer+flush_packets",
+            "-flags", "+low_delay",
             "-f", "kmsgrab",
             "-device", "/dev/dri/card0",
             "-framerate", str(framerate),
             "-i", "-",
             "-f", "pulse",
+            "-ac", "2",
             "-i", "default",
             "-vf", vf,
             "-c:v", "h264_vaapi",
             "-b:v", bitrate,
             "-maxrate", bitrate,
-            "-g", str(framerate * 2),
+            "-g", str(framerate),
             "-c:a", "aac",
             "-b:a", "128k",
             "-ar", "44100",
         ]
+
+        hls_flags = "delete_segments+append_list+omit_endlist+split_by_time"
 
         if record:
             RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,8 +102,8 @@ class CastManager:
                 "-f", "tee",
                 "-map", "0:v", "-map", "1:a",
                 (
-                    f"[f=hls:hls_time=2:hls_list_size=10"
-                    f":hls_flags=delete_segments+append_list"
+                    f"[f=hls:hls_time=1:hls_list_size=5"
+                    f":hls_flags={hls_flags}"
                     f":hls_segment_filename={segment_pattern}]{playlist_path}"
                     f"|[f=mp4:movflags=+faststart]{recording_path}"
                 ),
@@ -106,9 +111,9 @@ class CastManager:
         else:
             cmd += [
                 "-f", "hls",
-                "-hls_time", "2",
-                "-hls_list_size", "10",
-                "-hls_flags", "delete_segments+append_list",
+                "-hls_time", "1",
+                "-hls_list_size", "5",
+                "-hls_flags", hls_flags,
                 "-hls_segment_filename", segment_pattern,
                 playlist_path,
             ]
