@@ -593,10 +593,10 @@
         <label class="cast-option">
           <span>Quality</span>
           <select id="cast-bitrate">
-            <option value="3000k">3 Mbps (low)</option>
-            <option value="4000k" selected>4 Mbps (balanced)</option>
-            <option value="6000k">6 Mbps (high)</option>
-            <option value="8000k">8 Mbps (max)</option>
+            <option value="4000k">4 Mbps (low)</option>
+            <option value="6000k" selected>6 Mbps (balanced)</option>
+            <option value="8000k">8 Mbps (high)</option>
+            <option value="12000k">12 Mbps (max)</option>
           </select>
         </label>
         <label class="cast-option">
@@ -946,7 +946,7 @@
         body: JSON.stringify({
           resolution: document.getElementById('cast-resolution').value,
           bitrate: document.getElementById('cast-bitrate').value,
-          framerate: 30,
+          framerate: 60,
           record: document.getElementById('cast-record').checked,
         }),
       });
