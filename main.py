@@ -57,12 +57,21 @@ class Plugin:
         self.stream_manager = StreamManager()
         self.file_manager = FileManager(DATA_DIR)
 
+        # Auto-restart transfer server if cast survived a plugin reload
+        if self.transfer_server.cast_manager._state == "live":
+            try:
+                recordings = scan_recordings([])
+                await self.transfer_server.start(recordings, 8420)
+                logger.info("Transfer server auto-restarted for active cast")
+            except Exception as e:
+                logger.error(f"Auto-restart transfer server failed: {e}")
+
     async def _unload(self):
         logger.info("DeckCast plugin unloading")
-        if self.transfer_server:
-            await self.transfer_server.stop()
         if self.stream_manager:
             self.stream_manager.stop()
+        if self.transfer_server:
+            await self.transfer_server.stop()
 
     # ── Recordings ──────────────────────────────────────────────
 
@@ -253,22 +262,27 @@ class Plugin:
 
     # ── Live Casting ───────────────────────────────────────────
 
-    async def start_cast(self, resolution="1280x800", bitrate="4000k", framerate=30, record=False):
+    async def start_cast(self, resolution="1280x800", bitrate="6000k", framerate=60, record=False):
         """Start live casting the Steam Deck screen via HLS."""
         if not self.transfer_server or not self.transfer_server.is_running:
             return {"success": False, "error": "Start sharing first"}
-        return self.transfer_server.cast_manager.start(resolution, bitrate, framerate, record)
+        result = await self.transfer_server.cast_manager.start(resolution, bitrate, framerate, record)
+        logger.info(f"start_cast returning: {result}")
+        return result
 
     async def stop_cast(self):
         """Stop the active live cast."""
         if self.transfer_server and self.transfer_server.cast_manager:
-            return self.transfer_server.cast_manager.stop()
+            return await self.transfer_server.cast_manager.stop()
         return {"success": True, "status": "offline"}
 
     async def get_cast_status(self):
         """Return the current live cast status."""
         if self.transfer_server and self.transfer_server.cast_manager:
-            return self.transfer_server.cast_manager.status
+            st = self.transfer_server.cast_manager.status
+            logger.info(f"get_cast_status: {st.get('status')}")
+            return st
+        logger.info("get_cast_status: no transfer_server/cast_manager")
         return {"status": "offline"}
 
     # ── Live Streaming ──────────────────────────────────────────
