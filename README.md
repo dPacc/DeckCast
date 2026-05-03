@@ -4,6 +4,15 @@
 
 A [Decky Loader](https://decky.xyz) plugin that does what Steam's built-in sharing should have done from the start.
 
+<p align="center">
+  <a href="https://youtu.be/WLSNrbv94IU">
+    <img src="assets/tutorial-thumbnail.png" alt="DeckCast Tutorial — Watch on YouTube" width="720">
+  </a>
+</p>
+<p align="center">
+  <strong>▶️ <a href="https://youtu.be/WLSNrbv94IU">Watch the Installation Tutorial</a></strong>
+</p>
+
 ---
 
 ## 💡 Why DeckCast?

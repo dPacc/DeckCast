@@ -104,6 +104,7 @@ The video element uses `muted` attribute and starts playback muted, then unmutes
 - If only one alive → kill it, clean state
 - Transfer server auto-restarts if cast is active on reload
 - **Important**: Reattached casts use OLD FFmpeg arguments. Config changes only apply after stop + start.
+- **Important**: Switching to Desktop Mode and back breaks the cast. GSR loses its gamescope PipeWire connection but the process stays alive, so `_reattach()` reconnects to a broken capture (loops the last captured frame). Must stop and restart the cast after a mode switch.
 
 ## Concurrency Guard
 
