@@ -4,8 +4,8 @@
   "flags": ["root", "debug"],
   "api_version": 1,
   "publish": {
-    "tags": ["recording", "youtube", "streaming", "transfer", "video"],
-    "description": "Share Steam Deck recordings anywhere — Wi-Fi transfer, YouTube upload, clip trimming, and live streaming, all from Gaming Mode.",
+    "tags": ["recording", "youtube", "streaming", "transfer", "video", "casting", "screen-share"],
+    "description": "Cast your Steam Deck screen live to any browser, share recordings via Wi-Fi, upload to YouTube, trim clips, and stream to Twitch — all from Gaming Mode.",
     "image": "https://raw.githubusercontent.com/dPacc/DeckCast/main/assets/icon.png"
   }
 }

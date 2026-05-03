@@ -1,6 +1,6 @@
 # DeckCast
 
-A [Decky Loader](https://decky.xyz) plugin for Steam Deck that makes sharing game recordings effortless — all from Gaming Mode. No Desktop Mode, no size limits, no workarounds.
+A [Decky Loader](https://decky.xyz) plugin for Steam Deck that lets you cast your screen live, share recordings, upload to YouTube, and stream to Twitch — all from Gaming Mode. No Desktop Mode, no size limits, no workarounds.
 
 ## Why DeckCast?
 
@@ -8,6 +8,7 @@ Steam Deck's built-in sharing is broken for anything serious:
 
 | What you want | What Steam gives you | What DeckCast gives you |
 |---|---|---|
+| Cast screen to phone/TV | Not possible | Live 60fps cast to any browser on your network |
 | Transfer a 20-min clip to your phone | QR code caps at 60 seconds | Wi-Fi transfer, any size, scan & download |
 | Upload to YouTube | Desktop Mode + Chrome + keyboard struggle | One-tap upload from Gaming Mode |
 | Send to your PC | "Send to PC" — takes up to 2 days | Instant Wi-Fi download from any browser |
@@ -15,6 +16,16 @@ Steam Deck's built-in sharing is broken for anything serious:
 | Live stream | Not possible | RTMP streaming to YouTube/Twitch |
 
 ## Features
+
+### Live Cast (New)
+Cast your Steam Deck screen to any browser on your local network in real-time at 60fps. One tap to start — open the URL on your phone, tablet, laptop, or TV browser to watch. Uses gpu-screen-recorder for hardware-accelerated capture via PipeWire, piped through FFmpeg to HLS segments served over HTTP. Features include:
+- 60fps hardware capture with zero re-encoding overhead
+- Configurable resolution (720p, 800p native, 1080p) and quality (4-12 Mbps)
+- ~5-8 second latency over local network
+- Optional simultaneous recording while casting
+- Browser player with volume control, fullscreen, and Picture-in-Picture
+- Cast survives plugin reloads — pick up where you left off
+- Start/stop from the browser page or the Deck UI
 
 ### Recording Browser
 Browse all your Steam recordings in one place. See game name, duration, file size, and date. Sort by date, size, or game. Scans both internal storage and SD card automatically.
@@ -32,7 +43,7 @@ Set start and end points with sliders, then trim using FFmpeg's codec copy — i
 Stream your gameplay to YouTube, Twitch, or any RTMP endpoint. Configure resolution (720p/1080p), bitrate, and framerate. Save your stream key for one-tap "Go Live" next time.
 
 ### Background Operations
-Uploads and transfers continue running while you game. Come back to check progress whenever you want.
+Uploads, transfers, and casts continue running while you game. Come back to check progress whenever you want.
 
 ## Installation
 
@@ -55,10 +66,21 @@ Uploads and transfers continue running while you game. Come back to check progre
 # From another computer on the same network
 curl -L https://github.com/dPacc/DeckCast/releases/latest/download/DeckCast.zip -o /tmp/DeckCast.zip
 unzip /tmp/DeckCast.zip -d ~/homebrew/plugins/
-sudo systemctl restart plugin_loader
+sudo systemctl stop plugin_loader && sleep 3 && sudo systemctl start plugin_loader
 ```
 
+> **Warning:** Never use `systemctl restart plugin_loader`. Decky binds ports that need time to release — `restart` causes a port conflict crash loop. Always use `stop`, wait 3 seconds, then `start`.
+
 ## Setup
+
+### Live Cast
+No setup needed for basic casting. Just tap **Start Casting** in DeckCast — the cast URL appears on screen. Open it on any device's browser on the same network.
+
+**Requirement:** [gpu-screen-recorder](https://flathub.org/apps/com.dec05eba.gpu_screen_recorder) must be installed as a Flatpak:
+```bash
+flatpak install com.dec05eba.gpu_screen_recorder
+```
+This is pre-installed on most SteamOS setups. FFmpeg is also pre-installed on SteamOS.
 
 ### Wi-Fi Transfer
 No setup needed. Open DeckCast, tap **Transfer**, tap **Start Transfer Server**, and scan the QR code from any device on your network.
@@ -149,15 +171,22 @@ docker run --rm -v $(pwd)/out:/out deckcast
 DeckCast/
 ├── main.py                    # Plugin entry point — Decky calls this
 ├── backend/
+│   ├── cast_manager.py        # Live cast pipeline (GSR → pipe → FFmpeg → HLS)
 │   ├── recording_scanner.py   # Find and catalog .mp4 files
-│   ├── transfer_server.py     # HTTP server for Wi-Fi downloads
+│   ├── clip_trimmer.py        # FFmpeg trim (codec copy, no re-encoding)
 │   ├── youtube_auth.py        # YouTube OAuth 2.0 flow
 │   ├── youtube_upload.py      # YouTube Data API v3 upload
-│   ├── clip_trimmer.py        # FFmpeg trim (codec copy, no re-encoding)
-│   └── stream_manager.py      # RTMP live stream via FFmpeg
+│   ├── stream_manager.py      # RTMP live stream via FFmpeg
+│   ├── transfer/
+│   │   ├── server.py          # Async HTTP server (port 8420)
+│   │   ├── handlers.py        # Route handlers (cast API, file serving, HLS)
+│   │   └── router.py          # URL routing table
+│   └── web/
+│       └── cast.html          # Browser-side HLS player (HLS.js)
 ├── src/
-│   ├── index.tsx              # Plugin entry (React sidebar UI)
+│   ├── index.tsx              # Plugin entry (React sidebar UI + cast state)
 │   ├── components/
+│   │   ├── CastPanel.tsx      # Cast settings (resolution, bitrate, record)
 │   │   ├── RecordingBrowser.tsx
 │   │   ├── TransferPanel.tsx
 │   │   ├── YouTubeAuth.tsx
@@ -168,6 +197,9 @@ DeckCast/
 │   ├── hooks/                 # React hooks for state management
 │   ├── utils/                 # API helpers, formatting, constants
 │   └── types/                 # TypeScript interfaces
+├── docs/
+│   ├── cast-pipeline.md       # Cast architecture & troubleshooting
+│   └── deployment.md          # Build, deploy, and debug guide
 ├── tests/                     # Python backend tests (pytest)
 ├── defaults/config.json       # Default plugin settings
 ├── plugin.json                # Decky plugin metadata
