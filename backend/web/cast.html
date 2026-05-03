@@ -692,7 +692,6 @@
     reconnectOverlay.classList.remove('visible');
     liveStatus.classList.remove('hidden');
     viewerControls.classList.remove('hidden');
-    video.style.display = '';
   }
 
   function showOfflineUI() {
@@ -700,7 +699,6 @@
     reconnectOverlay.classList.remove('visible');
     liveStatus.classList.add('hidden');
     viewerControls.classList.add('hidden');
-    video.style.display = 'none';
   }
 
   function showReconnectUI() {
@@ -757,6 +755,8 @@
   }
 
   // ---- HLS Stream ----
+  let stuckWatchdog = null;
+
   function startStream(streamStartedAt) {
     isLive = true;
     reconnectAttempts = 0;
@@ -764,6 +764,8 @@
 
     showLiveUI();
     startElapsedTimer();
+
+    if (stuckWatchdog) { clearInterval(stuckWatchdog); stuckWatchdog = null; }
 
     if (Hls.isSupported()) {
       if (hls) {
@@ -798,6 +800,10 @@
           video.muted = isMuted;
           video.volume = lastVolume;
           updateVolumeIcon();
+          requestAnimationFrame(() => {
+            video.style.willChange = 'transform';
+            requestAnimationFrame(() => { video.style.willChange = 'auto'; });
+          });
         }).catch(() => {});
       }
 
@@ -806,10 +812,21 @@
         triggerPlay();
       });
 
-      // Watchdog: if video stalls or never starts, seek to live edge and retry
+      video.addEventListener('canplay', function onCanPlay() {
+        video.removeEventListener('canplay', onCanPlay);
+        triggerPlay();
+      });
+
       let lastTime = -1;
-      let stuckWatchdog = setInterval(() => {
-        if (!isLive || !hls) { clearInterval(stuckWatchdog); return; }
+      let watchdogTicks = 0;
+      stuckWatchdog = setInterval(() => {
+        if (!isLive || !hls) { clearInterval(stuckWatchdog); stuckWatchdog = null; return; }
+        watchdogTicks++;
+        if (watchdogTicks >= 4 && !playTriggered) {
+          hls.stopLoad();
+          hls.startLoad();
+          return;
+        }
         if (video.paused && video.readyState >= 2) {
           playTriggered = false;
           triggerPlay();
@@ -824,7 +841,7 @@
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
-          clearInterval(stuckWatchdog);
+          if (stuckWatchdog) { clearInterval(stuckWatchdog); stuckWatchdog = null; }
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               handleStreamDrop();
@@ -865,13 +882,12 @@
     isLive = false;
     startedAt = null;
 
+    if (stuckWatchdog) { clearInterval(stuckWatchdog); stuckWatchdog = null; }
+
     if (hls) {
       hls.destroy();
       hls = null;
     }
-
-    video.removeAttribute('src');
-    video.load();
 
     stopElapsedTimer();
     elapsedTimeEl.textContent = '00:00:00';
