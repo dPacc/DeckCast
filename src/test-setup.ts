@@ -1,13 +1,16 @@
 import { vi } from "vitest";
 
 // Mock @decky/api
-vi.mock("@decky/api", () => ({
-  call: vi.fn(),
-  callable: vi.fn(),
-  definePlugin: vi.fn((fn: any) => fn),
-  routerHook: { addRoute: vi.fn(), removeRoute: vi.fn() },
-  toaster: { toast: vi.fn() },
-}));
+vi.mock("@decky/api", () => {
+  const callFn = vi.fn();
+  return {
+    call: callFn,
+    callable: vi.fn((name: string) => (...args: any[]) => callFn(name, ...args)),
+    definePlugin: vi.fn((fn: any) => fn),
+    routerHook: { addRoute: vi.fn(), removeRoute: vi.fn() },
+    toaster: { toast: vi.fn() },
+  };
+});
 
 // Mock @decky/ui
 vi.mock("@decky/ui", () => ({
